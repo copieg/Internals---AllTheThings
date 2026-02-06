@@ -1,0 +1,71 @@
+Common Internal Pentest Access Paths
+Access is typically provided via one of these:
+Method	Description
+VPN 	You're given credentials to a secure tunnel into the internal network. You might land directly on a Windows client.
+Citrix Gateway / Remote Desktop	You're given access to a jump host (often hardened) via Citrix or RDP. Limited interaction, but inside the LAN.
+Jumpbox	A VM or physical machine inside the corporate LAN. You might be given local admin or domain user access here.
+
+Goal from this entry point is to enumerate the AD environment and escalate from a domain user (or even local user) to Domain Admin.
+
+
+AD Basics
+
+https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/understanding-the-active-directory-logical-model
+
+Think of AD as the central nervous system of a Windows network. It manages identities, policies, and access control.
+🔹 Key Components
+Term	Description	Why They Matter
+Domain Controller (DC)	A server running AD DS (Domain Services). Holds the user/group data and Kerberos ticket-granting service.	Target for attacks like DCSync, Golden Ticket, Kerberoasting.
+Users / Groups	Objects in AD. Groups can be nested, users can be assigned to groups for permissions.	Exploiting misconfigured group memberships often leads to privilege escalation.
+GPO (Group Policy Objects)	Used by admins to enforce settings (e.g. map drives, disable UAC) across machines.	Weak GPOs can be hijacked to push malware or get code execution.
+OUs (Organizational Units)	Containers for grouping users/computers. GPOs are often applied at the OU level.	Poorly segmented OUs = easier lateral movement.
+Forest / Domain / Trusts	A forest is the top-level AD container. It can contain multiple domains. Trusts allow access between domains.	You may be able to pivot across domains and forests if trusts are misconfigured.
+
+Basic Enumeration:
+
+Command Example (on Windows or via tools):
+
+# Get basic domain info	nltest /dsgetdc:<domain>
+net config workstation
+# List domain users	net user /domain
+# Show domain trusts	nltest /domain_trusts
+
+Common First Tasks for Internal Pentesters
+Task	Tools	Commands / Notes
+Confirm access & hostname	whoami, hostname, ipconfig	Confirm if you're on a domain.
+List domain info	nltest, net, powershell	See domain structure, trusts, domain controllers.
+AD Enumeration	SharpHound / BloodHound, ADExplorer, PowerView	Map out users, groups, sessions, admins.
+Local privilege check	Seatbelt, winPEAS, manual	Check for misconfig, vuln software, weak permissions.
+
+First 10 Minutes on Internal Network
+	1. Land via VPN – connected to an internal network via VPN. Get a shell on a Windows  box.
+	
+	2. Run recon – 
+		○ Use whoami, net user /domain, and nltest to identify:
+		○ You’re CORP\j.doe (standard domain user)
+		○ Domain is corp.internal.local
+		○ DC is DC01.corp.internal.local
+		
+	3. Run SharpHound (BloodHound collector):
+	
+	4. SharpHound.exe -c all
+	○ You collect info to graph in BloodHound later.
+	
+	5. Check local machine – 
+	○ Run Seatbelt.exe or winPEASx64.exe to look for privesc opportunities.
+	
+	
+	
+Homework for Step 1
+✅ Read up on:
+	• Basic AD architecture: Microsoft Docs – Active Directory Basics
+	• Watch “How AD Works” videos
+	• Set up a lab (e.g. using HackTheBox - AD lab VMs)
+	• Start using BloodHound, Seatbelt, and native Windows commands
+	
+✅ Optional lab:
+	• Set up your own mini domain using VirtualBox or VMware with:
+		○ Windows Server 2019 as DC
+		○ Windows 10 joined to domain
+		○ One regular user and one local admin
+

@@ -1,0 +1,11 @@
+M.1 What It Is
+	• S4U (Service-for-User) extension includes S4U2self and S4U2proxy.
+	• Allows a service to request a ticket on behalf of a user (no credentials needed) if configured for delegation.
+M.2 Why It Matters
+	• Attackers can exploit S4U in constrained delegation or incorrectly configured AD settings to impersonate other domain users or admins.
+M.3 How to Exploit (Step-by-Step)
+	1. Identify a service with constrained or RBCD.
+	2. Use Rubeus or specialized scripts to do S4U2self → S4U2proxy.
+	3. Obtain a TGS for a high-privilege user to a specific service.
+	4. Defend
+		○ Similar to delegation defenses: limit S4U usage, monitor changes to service accounts, and configure minimal delegation.

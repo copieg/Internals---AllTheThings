@@ -1,0 +1,259 @@
+1. Active Directory - Certificate Services
+1.1 What It Is
+	• Active Directory Certificate Services (AD CS) issues digital certificates that can authenticate users, computers, or services in a Windows domain.
+	• Misconfigurations or privilege escalation paths in AD CS can let attackers forge certificates that grant them domain privileges.
+1.2 Why It Matters
+	• ESC1, ESC2, etc. (Enterprise Admin Service Principal Name issues) can allow forging Golden Certificates or abusing certificate templates.
+	• Attackers with certain privileges can request a certificate for any user, then impersonate them (including domain admins).
+1.3 How To Check / Exploit (Step-by-Step)
+	1. Enumerate Certificate Services
+		○ Run tools like certutil on the domain or use Certify.exe (from GhostPack).
+
+powershell
+CopyEdit
+certutil -config - -ping
+
+or
+
+powershell
+CopyEdit
+.\Certify.exe enumerate
+		○ Look for misconfigured templates (e.g., ENROLLEE_SUPPLIES_SUBJECT, Domain Computers can enroll, etc.).
+	2. Identify Vulnerable Templates
+		○ If a template allows ‘Any Purpose’ or ‘Enrollment’ for authenticated users, this might let normal domain users request a domain controller or administrator certificate.
+	3. Request a Malicious Certificate
+		○ If you have the rights, request a certificate for a high-privilege account using Certify.exe or Impacts’ Certi.
+		○ Example with Certify:
+
+powershell
+CopyEdit
+.\Certify.exe request /ca:<CA_Name> /template:<templateName> /altname:Administrator
+	4. Use the Certificate for Authentication
+		○ Convert certificate to .pfx and use it with Rubeus or PkINIT to get a Kerberos TGT.
+		○ Now you can impersonate that user (or a domain admin if you used admin altname).
+	5. Defend
+		○ Restrict enrollment permissions on certificate templates.
+		○ Disable unneeded templates.
+		○ Keep AD CS fully patched and audited.
+
+2. Active Directory - Access Controls ACL/ACE
+2.1 What It Is
+	• Access Control Lists (ACLs) define who can do what to AD objects (users, groups, computer objects).
+	• Access Control Entries (ACEs) are the individual permissions within an ACL (e.g., WriteProperty, ResetPassword).
+2.2 Why It Matters
+	• Attackers can find misconfigured ACLs or inherited privileges that let them escalate privileges—for example, the ability to reset passwords on domain admin accounts.
+2.3 How To Check / Exploit (Step-by-Step)
+	1. Enumerate ACLs
+		○ Use BloodHound (SharpHound) or PowerView:
+
+powershell
+CopyEdit
+# PowerView
+Get-DomainObjectACL -ResolveGUIDs | Out-File ACLs.txt
+		○ Look for WriteOwner, WriteDacl, ResetPassword, or GenericAll permissions.
+	2. Identify a Vulnerable Object
+		○ If you see that a normal user has GenericAll on a privileged account or group, that user can effectively take it over.
+	3. Abuse the Permission
+		○ For instance, if you have ResetPassword on a domain admin user, you can set a new password for that account and then log in as them.
+		○ Tools: Set-DomainUserPassword (PowerView) or Rubeus.
+	4. Defend
+		○ Regularly audit AD ACLs with BloodHound or scripts.
+		○ Strictly limit who has “GenericAll” or “ResetPassword” on high-value objects.
+		○ Use protected groups and SDProp to reset dangerous changes periodically.
+
+3. Active Directory - Enumeration
+3.1 What It Is
+	• Collecting information about users, computers, groups, policies, etc., in a domain to find potential weaknesses.
+3.2 Why It Matters
+	• AD is huge—automated enumeration helps attackers find the fastest path to Domain Admin (e.g., via unprivileged but misconfigured accounts).
+3.3 How To Enumerate (Step-by-Step)
+	1. Basic Commands
+		○ net user /domain and net group /domain give basic user/group lists.
+		○ Get-ADUser -Filter * -Properties * if you have PowerShell with RSAT.
+	2. Use PowerView
+
+powershell
+CopyEdit
+Import-Module .\PowerView.ps1
+Get-NetUser
+Get-NetComputer
+Get-NetGroup -Name *admin*
+	3. Use BloodHound
+		○ Collect data:
+
+powershell
+CopyEdit
+.\SharpHound.exe --CollectionMethod All
+		○ Load JSON into BloodHound GUI to see graphical relationships.
+	4. Look for
+		○ User attributes with plaintext info (description, pwdLastSet, adminCount).
+		○ Group membership that grants admin privileges.
+		○ Machines with unconstrained delegation.
+	5. Defend
+		○ Limit domain enumeration by restricting read access on certain objects.
+		○ Don’t store secrets in user descriptions.
+		○ Monitor excessive LDAP queries from a single account.
+
+4. Active Directory - Group Policy Objects (GPO)
+4.1 What It Is
+	• Group Policy allows domain administrators to set configuration (scripts, registry changes, software deployment) on domain-joined machines.
+4.2 Why It Matters
+	• Misconfigurations in GPO can reveal credentials or allow attackers to run malicious scripts at startup.
+	• Attackers with GPO editing rights can push malicious settings across the domain.
+4.3 How To Exploit (Step-by-Step)
+	1. Enumerate GPOs
+
+powershell
+CopyEdit
+Get-GPO -All
+Get-GPLink -All
+		○ Or use gpresult /R on a Windows machine to see applied GPOs.
+	2. Check for Stored Credentials
+		○ Older GPO might store local admin creds in Groups.xml (the GPP password issue).
+		○ Tools like gpp-decrypt or Metasploit modules can retrieve and decrypt these.
+	3. Modify GPO
+		○ If you have edit rights on a GPO, you can add a startup script or scheduled task that spawns a reverse shell for you on all computers that apply that GPO.
+	4. Defend
+		○ Use Group Policy Preferences with caution; do not store local admin passwords in GPO.
+		○ Restrict who can modify critical GPOs.
+		○ Keep GPP cpassword patches updated.
+
+5. Active Directory - Groups
+5.1 What It Is
+	• AD groups are collections of users or machines. Common groups: Domain Admins, Enterprise Admins, Remote Desktop Users, etc.
+5.2 Why It Matters
+	• Attackers target membership in privileged groups or look for unusual groups with high privileges (e.g., delegated admin group).
+5.3 How To Enumerate (Step-by-Step)
+	1. PowerShell
+
+powershell
+CopyEdit
+Get-ADGroup -Filter * | select Name
+Get-ADGroupMember -Identity "Domain Admins"
+	2. Check Nested Groups
+		○ Sometimes a group is nested inside Domain Admins. If your account is in that nested group, you effectively have domain admin privileges.
+	3. Review
+		○ Tools like BloodHound highlight group membership paths.
+		○ If you see a group with few members but high privileges, target them.
+	4. Defend
+		○ Keep group membership minimal.
+		○ Remove nested groups where possible.
+		○ Audit privileges of each group.
+
+6. Active Directory - Linux
+6.1 What It Is
+	• Linux hosts can be domain members (using Likewise, Samba, or SSSD). This is less common but still possible.
+6.2 Why It Matters
+	• Attackers can exploit domain-joined Linux servers for AD credentials, Kerberos tickets, or pivot.
+6.3 How To Enumerate (Step-by-Step)
+	1. Check /etc/krb5.conf or /etc/sssd/sssd.conf**
+		○ Could contain domain info or sometimes credentials.
+	2. Use Impacket from Linux
+		○ Tools like GetUserSPNs.py, atexec.py can operate against AD from a Linux host.
+	3. Dump Keytabs
+		○ If you have root on the Linux machine, you might find kerberos keytabs that let you impersonate domain accounts.
+	4. Defend
+		○ Use secure configs for Samba/SSSD.
+		○ Don’t store domain admin creds in plain text on Linux domain members.
+
+7. Active Directory - Machine Account Quota
+7.1 What It Is
+	• By default, any domain user can create up to 10 machine accounts in AD. This is “Machine Account Quota.”
+7.2 Why It Matters
+	• Attackers can create a malicious machine account, then request Kerberos tickets that might be vulnerable to Kerberoasting or other attacks.
+7.3 How To Exploit (Step-by-Step)
+	1. Check Quota
+		○ By default: Get-ADDomain | select ms-DS-MachineAccountQuota shows 10.
+	2. Create a Machine Account
+		○ Tools like PowerMad or Add-DomainComputer can do this if you have a normal user account.
+	3. Request SPNs
+		○ The new machine account might host a service (SPN). Then Kerberoast that service’s ticket.
+	4. Defend
+		○ Set ms-DS-MachineAccountQuota to 0 or a lower value.
+		○ Monitor new machine accounts and unusual SPNs.
+
+8. Active Directory - NTDS Dumping
+8.1 What It Is
+	• NTDS.dit is the AD database containing all user password hashes. Dumping it = full domain compromise.
+8.2 Why It Matters
+	• If an attacker accesses NTDS.dit from a Domain Controller, they can crack or pass every user’s password hash.
+8.3 How To Dump (Step-by-Step)
+	1. Volume Shadow Copy
+
+powershell
+CopyEdit
+vssadmin create shadow /for=C:
+copy \\? \GLOBALROOT\Device\HarddiskVolumeShadowCopyX\Windows\NTDS\NTDS.dit .
+		○ Also copy the SYSTEM registry hive for the boot key.
+	2. Invoke-NinjaCopy or Invoke-Mimikatz approach.
+		○ Mimikatz can do:
+
+powershell
+CopyEdit
+lsadump::dcsync /domain:lab.local /user:Administrator
+	3. Extract Hashes with dsusers.py or secretsdump.py from Impacket.
+	4. Defend
+		○ Secure domain controllers (no normal user RDP).
+		○ Enable DC logging for suspicious dumping.
+		○ Limit who can run DCSync (adminTier model, etc.).
+
+9. Active Directory - Read Only Domain Controller (RODC)
+9.1 What It Is
+	• RODC: A domain controller holding a read-only copy of AD, often deployed in remote locations.
+9.2 Why It Matters
+	• RODCs only store password hashes for accounts specifically cached. If an attacker cracks these cached creds, they can pivot to the domain.
+9.3 How To Exploit
+	1. Enumerate RODC
+		○ Tools like nltest /dclist:domain or Get-ADDomainController -Filter *.
+	2. Check Cached Credentials
+		○ If local site uses an RODC, see if domain admins are cached (they shouldn’t be).
+		○ Dump RODC if you have local admin rights on it.
+	3. Defend
+		○ Restrict which accounts are cached on RODC.
+		○ Don’t store high-privileged accounts on RODC.
+		○ Monitor RODC logs carefully.
+
+10. Active Directory - Federation Services
+10.1 What It Is
+	• AD FS lets users sign on using claims-based authentication, often for single sign-on (SSO) to external resources.
+10.2 Why It Matters
+	• Misconfigurations in AD FS can let attackers forge SAML tokens or manipulate claim rules for unauthorized access.
+10.3 How To Exploit (Step-by-Step)
+	1. Enumerate AD FS Endpoints
+		○ Look for adfs.domain.com or well-known AD FS URIs.
+		○ Tools like ADFSpoof or manual SAML injection may apply.
+	2. Steal Token-Signing Certificate
+		○ If you get the token-signing key, you can issue your own valid tokens for any user.
+	3. Forge SAML
+		○ Tools like AADB2C or custom scripts can create a fake SAML token with any claims (like domain admin).
+	4. Defend
+		○ Protect the token-signing cert.
+		○ Rotate keys regularly.
+		○ Limit who can manage AD FS and claim rules.
+
+11. Active Directory - Integrated DNS (ADIDNS)
+11.1 What It Is
+	• AD DNS is stored in the Active Directory database, integrated with domain controllers.
+11.2 Why It Matters
+	• Attackers can do DNS zone transfers or modify DNS records if misconfigured.
+	• Tools like dnscmd or PowerShell can read or alter DNS records to redirect traffic, set up malicious subdomains, etc.
+11.3 How To Exploit (Step-by-Step)
+	1. Enumerate DNS
+		○ nslookup or dig @dc1.domain.local domain.local axfr to see if zone transfers are open.
+		○ dnscmd <dc> /enumrecords domain.local .
+	2. Modify Records
+		○ If you have privileges, you can change a host’s DNS record to point to your attacker machine.
+		○ This can facilitate SMB Relay or credential capture.
+	3. Defend
+		○ Secure DNS updates (only allow secure dynamic updates).
+		○ Limit who can run dnscmd or DNS management tasks.
+		○ Monitor for unusual DNS record changes.
+
+12. Active Directory - Tricks
+(A catch-all for smaller tips.)
+	• DFS Shares: Check if domain-based DFS shares hold sensitive data or can be manipulated.
+	• AdminSDHolder: Mechanism that enforces ACLs on privileged groups. Attackers might tamper with it.
+	• SID History: Attackers can add a privileged SID to their own user’s SID history.
+Defend:
+	• Monitor changes to AdminSDHolder and SID filtering.
+	• Periodically run scripts that check for suspicious SIDs, GPO, or DFS config.

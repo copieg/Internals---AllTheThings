@@ -1,0 +1,21 @@
+D.1 What It Is
+	• OverPass-The-Hash is a variation of pass-the-hash using Kerberos tickets instead of purely NTLM.
+	• You use an NTLM hash to request a Kerberos TGT from the domain, effectively skipping the need for the clear-text password.
+D.2 Why It Matters
+	• Bypasses standard pass-the-hash detection because it’s using Kerberos after forging the TGT.
+	• Attackers can escalate or move laterally in AD without knowing the real password.
+D.3 How to Exploit (Step-by-Step)
+	1. Obtain NTLM Hash
+		○ E.g., from Mimikatz or a SAM/NTDS dump.
+	2. Use Mimikatz OverPass
+
+powershell
+CopyEdit
+sekurlsa::pth /user:Administrator /domain:corp.local /ntlm:<hash> /run:cmd.exe
+		○ This requests a TGT with that hash, granting a Kerberos token.
+	3. Access Resources
+		○ You now have a Kerberos ticket as Administrator (if the hash is for an admin account).
+	4. Defend
+		○ Detect suspicious TGT requests for unusual accounts.
+		○ Use LSA Protection and Credential Guard where possible.
+		○ Regularly rotate admin credentials.

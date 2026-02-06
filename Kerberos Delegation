@@ -1,0 +1,41 @@
+Delegation allows a service to act on behalf of a user to access another service. Several types:
+
+L.1 Constrained Delegation
+L.1.1 What It Is
+	• Constrained Delegation: A service can only delegate a user’s credentials to specific other services.
+	• Attacker can abuse this if a service is allowed to delegate to critical services like CIFS/ or HTTP/.
+L.1.2 Exploit
+	1. Enumerate SPNs with constrained delegation: msDS-AllowedToDelegateTo.
+	2. If you can compromise that service account, you can request a S4U2self or S4U2proxy ticket to impersonate any user to the allowed service.
+	3. Access resources as a high-privileged user on the delegated service.
+L.1.3 Defend
+	• Limit which services are allowed for delegation.
+	• Use Resource-Based delegation where possible.
+	• Monitor AD for changes to msDS-AllowedToDelegateTo.
+
+L.2 Resource Based Constrained Delegation (RBCD)
+L.2.1 What It Is
+	• A more flexible version of constrained delegation introduced in Server 2012.
+	• Each resource (like a computer object) controls who can delegate to it via msDS-AllowedToActOnBehalfOfOtherIdentity.
+L.2.2 Exploit
+	1. Find a machine or service with RBCD set.
+	2. Write your own computer account into msDS-AllowedToActOnBehalfOfOtherIdentity if you have the rights.
+	3. Request a service ticket to that resource as any user you want.
+L.2.3 Defend
+	• Regularly check msDS-AllowedToActOnBehalfOfOtherIdentity attributes.
+	• Limit permissions so normal users can’t modify them.
+	• Use sign & seal or SPNs carefully.
+
+L.3 Unconstrained Delegation
+L.3.1 What It Is
+	• The old form of delegation: a service can act on behalf of any user to any service.
+	• Very dangerous if a domain controller or critical server is set to unconstrained delegation.
+L.3.2 Exploit
+	1. Compromise a machine or service with unconstrained delegation.
+	2. Wait for a domain admin or privileged user to authenticate to that service.
+	3. Steal the TGT from memory (e.g., Mimikatz or Rubeus).
+	4. Use the TGT to impersonate domain admin.
+L.3.3 Defend
+	• Avoid unconstrained delegation altogether.
+	• Use constrained or RBCD.
+	• Monitor systems configured with TrustedForDelegation = True.

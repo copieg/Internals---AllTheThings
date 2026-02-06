@@ -1,0 +1,20 @@
+A.1 What It Is
+	• Microsoft System Center Configuration Manager (SCCM) is a tool used to deploy software, patches, and OS images across an organization.
+	• Often integrated with Active Directory, giving it high privileges on workstations and servers.
+A.2 Why It Matters
+	• Attackers who compromise SCCM’s infrastructure can push malicious packages to hundreds or thousands of endpoints.
+	• SCCM servers usually run with high privileges or have access to administrative shares.
+A.3 How to Exploit (Step-by-Step)
+	1. Enumerate SCCM
+		○ Check for systems named SCCM, CM or references in AD; or scan typical SCCM ports (TCP 80, 443, 8530, 8531).
+		○ Look for SQL databases named CM_ (like CM_<SiteCode>).
+	2. Gather Credentials
+		○ If you get local admin on the SCCM server, you can extract service account creds.
+		○ Dump SCCM DB for credentials or site info.
+	3. Abuse SCCM Console
+		○ If you have access to the SCCM Admin Console, create a malicious package or application and deploy it domain-wide.
+		○ This can yield privileged code execution on many hosts.
+	4. Defend
+		○ Restrict who can manage SCCM.
+		○ Use separate, strong credentials for SCCM service accounts.
+		○ Monitor software deployments, especially new or unexpected packages.

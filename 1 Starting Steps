@@ -1,0 +1,22 @@
+step 1 - setup
+	• understand how internal pentests are setup e.g. VPNs/citrix gateways -> jumpboxes -> users setup in the domain
+	• understand basic principles of AD - DCs, users, groups, GPOs, OUs, forests and trusts - figure out what each of these means, why we care, how they interact and how they can be broken at a very high level
+
+step 2 - attacks
+	• privesc - get read up on local privesc - focus on CVE hunting in vuln software, scheduled tasks, weak service and weak binary permissions
+	• lateral movement - focus on kerberos, certificate abuse, responder - also learn how to perform lat movement so learn crakcmapexec at a basic level and checkout stuff like atexec, psexec etc for deploying jumps
+	• learn DC takeovers - eternalblue, read-only DCs, easy routes to DA
+
+step 3 - tooling
+	• go check out sharptools and learn the names of tools and a sentence or two as to what they do, where you use them - super important to get perspective on tooling (https://github.com/Flangvik/SharpCollection) - focus on sharpshares (net shares), sharpup (priv esc), sharphound (collection), sharpGPOAbuse (GPO takeover), rubeus (kerb attacks), seatbelt/winPEAS (enum + privesc), certify (cert abuse), sweetpotato (potato attacks as a whole for privesc), responder (hash hunting) 
+	• read some tutorials on bloodhound - get a recent one as they completely overhauled the tool a few weeks ago
+
+step 4 - post exploit
+	• read up on persistence e.g. deploying scheduled tasks and binaries as admin, golden ticketing (and other kerberos post exploit attacks), LAPS backdoors
+
+step 5 - bonus
+	• read up on LOLBAS apps - deploying your malware when you can't run your malware
+	• powershell bypass techniques e.g. running the DLL only, setting execution policy etc
+	
+	
+

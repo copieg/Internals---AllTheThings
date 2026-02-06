@@ -1,0 +1,20 @@
+C.1 What It Is
+	• Capturing password hashes (NTLM, LM, Net-NTLMv2, etc.) and cracking them offline with tools like Hashcat or John.
+C.2 Why It Matters
+	• Once an attacker has hashed credentials, they can attempt to crack them for clear-text passwords.
+	• Weak or reused passwords are often quickly cracked, leading to broader compromise.
+C.3 How to Exploit (Step-by-Step)
+	1. Capture Hashes
+		○ Techniques: LLMNR/Responder, SMB capture, NTDS.dit dump, Mimikatz, registry extraction.
+		○ Save them to a file (e.g., hashes.txt).
+	2. Choose Cracking Tool
+		○ hashcat -m <mode> hashes.txt wordlist.txt
+		○ john --format=<format> --wordlist=wordlist.txt hashes.txt
+	3. Monitor Progress
+		○ Use rules, masks, or incremental modes for deeper coverage if the password is complex.
+	4. Use the Cracked Password
+		○ Try it on other services or devices. Many users recycle credentials.
+	5. Defend
+		○ Enforce strong password policies.
+		○ Disable LM hashes.
+		○ Segment networks to reduce hash capturing opportunities.

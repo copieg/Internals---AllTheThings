@@ -1,0 +1,24 @@
+H.1 What It Is
+	• Man-in-the-Middle (MITM) typically on local subnets, capturing credentials or relaying them to another service.
+	• Relay takes captured credentials (e.g., NTLM) and uses them to authenticate to a different target (SMB Relay, LDAP Relay).
+H.2 Why It Matters
+	• Attackers can trick a machine into authenticating to them (via LLMNR, mDNS, or NBNS) and then relay those credentials to a target system for remote code execution.
+H.3 How to Exploit (Step-by-Step)
+	1. Set up Responder or MITM6:
+
+bash
+CopyEdit
+python Responder.py -I eth0 -rdw
+	2. Wait for a victim broadcast name resolution request.
+	3. Capture the Net-NTLMv2 hash from the handshake.
+	4. Relay it to a target with ntlmrelayx:
+
+bash
+CopyEdit
+ntlmrelayx.py -tf targets.txt -smb2support
+		○ Potentially gain a shell if the target is not enforcing SMB signing.
+	5. Defend
+		○ Disable LLMNR, NBNS.
+		○ Enable SMB signing.
+		○ Use LDAP signing and LDAPS.
+		○ Restrict local admin privileges to reduce success of relayed creds.

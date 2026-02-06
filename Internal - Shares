@@ -1,0 +1,18 @@
+J.1 What It Is
+	• File shares (SMB, CIFS) in a Windows environment can hold scripts, config files, backups, etc.
+	• Attackers look for misconfigurations allowing read/write or credentials stored in files.
+J.2 Why It Matters
+	• Shared directories might contain plaintext credentials, scripts with service passwords, or other sensitive data.
+	• Write-access could let an attacker upload a malicious file that’s executed by a user or service.
+J.3 How to Exploit (Step-by-Step)
+	1. Scan for open shares
+		○ Tools: smbmap, enum4linux, or Metasploit’s auxiliary/scanner/smb/smb_enumshares.
+	2. Check Permissions
+		○ If you have write on a share used by a privileged user or service, you can drop a malicious script or .exe that gets executed.
+	3. Read for Credentials
+		○ Search for .config, .ini, .xml, .ps1, .bat for potential secrets.
+		○ findstr /si "password" *.xml in Windows shares.
+	4. Defend
+		○ Principle of Least Privilege: restrict share permissions.
+		○ Monitor file changes on critical shares.
+		○ Don’t store credentials in plaintext.

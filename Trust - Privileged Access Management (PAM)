@@ -1,0 +1,12 @@
+W.1 What It Is
+	• PAM solutions (e.g., Microsoft’s MIM PAM, or third-party) limit the time a user or group has privileged access, storing credentials in a separate bastion environment.
+W.2 Why It Matters
+	• If misconfigured, attackers can still escalate or maintain privileges. Or they may find ways to bypass the bastion process.
+W.3 How to Exploit (Step-by-Step)
+	1. Identify if a PAM solution is in use (MIM, etc.).
+	2. Look for ways to add your account to privileged groups bypassing the approval process.
+	3. Steal credentials from the bastion server or intercept the authentication tokens.
+	4. Defend
+		○ Properly isolate the PAM environment.
+		○ Monitor group membership changes.
+		○ Regularly review logs from the bastion infrastructure.

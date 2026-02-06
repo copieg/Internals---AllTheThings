@@ -1,0 +1,12 @@
+Z.1 What It Is
+	• If two separate forests trust each other, an attacker can forge a “trust ticket” that allows them to impersonate privileged accounts across forests.
+Z.2 Why It Matters
+	• Potential to compromise an entire forest from another if the trust is configured incorrectly or attacker obtains the right keys.
+Z.3 How to Exploit (Step-by-Step)
+	1. Enumerate inter-forest trust.
+	2. Obtain the trust key (like the krbtgt equivalent for the trust).
+	3. Forge a TGT or a cross-forest TGS to the other forest’s resources.
+	4. Defend
+		○ Use selective authentication or domain isolation for forest trusts.
+		○ Rotate trust keys.
+		○ Restrict high privilege accounts from logging into lower trust domains.

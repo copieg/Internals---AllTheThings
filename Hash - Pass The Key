@@ -1,0 +1,19 @@
+F.1 What It Is
+	• A concept similar to Pass-the-Hash but uses Kerberos keys (RC4, AES) directly.
+	• Attackers pass the Kerberos key to get TGS or other tickets.
+F.2 Why It Matters
+	• If you have the AES or RC4 keys of a user, you can generate Kerberos tickets (like forging TGT with Rubeus).
+	• Bypasses needing the user’s password or NTLM hash.
+F.3 How to Exploit (Step-by-Step)
+	1. Obtain the AES / RC4 Key
+		○ Possibly from DCSync (mimikatz’s lsadump::dcsync), or from a TGT/TGS extraction.
+	2. Rubeus usage
+
+powershell
+CopyEdit
+Rubeus.exe ptt /ticket:<base64ticket>
+		○ Or generate a new TGT specifying the key.
+	3. Use the Ticket
+		○ Once injected, you can authenticate as that user to domain resources.
+	4. Defend
+		○ Similar to OverPass/Pass-the-Hash defenses: strong account segmentation, monitoring unusual ticket requests, limiting privileged account usage.

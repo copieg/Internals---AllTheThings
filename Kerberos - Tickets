@@ -1,0 +1,17 @@
+
+N.1 What It Is
+	• Kerberos uses tickets (TGT, TGS) for authentication. Attackers manipulate or forge these tickets for unauthorized access (Golden Ticket, Silver Ticket, etc.).
+N.2 Why It Matters
+	• If an attacker obtains the KRBTGT account hash, they can create Golden Tickets. If they get a service account hash, they can create Silver Tickets.
+N.3 How to Exploit (Step-by-Step)
+	1. Dump the relevant hash (KRBTGT for Golden Ticket, service account for Silver Ticket).
+	2. Use Mimikatz or Rubeus to forge a ticket:
+
+powershell
+CopyEdit
+mimikatz # kerberos::golden /user:Administrator /domain:corp.local /sid:S-1-5-21-... /krbtgt:<hash> /ptt
+	3. Inject the ticket (/ptt) and use domain admin privileges.
+	4. Defend
+		○ Rotate KRBTGT password regularly (twice).
+		○ Detect or alert on suspicious ticket lifetimes.
+		○ Restrict domain admin usage.

@@ -1,0 +1,13 @@
+I.1 What It Is
+	• PXE (Preboot eXecution Environment) allows network booting of an OS image from a server.
+	• Attackers can replace or tamper with the boot image to gain code execution on new or re-imaged machines.
+I.2 Why It Matters
+	• If a domain device boots from a malicious image, the attacker can inject backdoors or gather credentials from the OS setup process.
+I.3 How to Exploit (Step-by-Step)
+	1. Access the WDS/PXE server or TFTP root.
+	2. Replace the legitimate boot image (e.g., boot.wim) with a malicious version or inject malicious scripts.
+	3. Wait for machines to PXE boot; they load your malicious OS environment.
+	4. Defend
+		○ Secure WDS/PXE servers (strong credentials, no guest writes).
+		○ Use secure boot solutions if possible.
+		○ Restrict network boot to only authorized machines.

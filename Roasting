@@ -1,0 +1,132 @@
+1. ASREP Roasting
+1.1 What It Is
+	• ASREP Roasting targets user accounts in AD that have the property “Do not require Kerberos preauthentication” set.
+	• When preauthentication is not required, an attacker can request a Kerberos TGT for that user without providing valid credentials. The KDC returns an encrypted ticket, which can then be cracked offline to reveal the user’s password.
+1.2 Why It Matters
+	• These accounts often include service accounts or older misconfigured user accounts.
+	• If the password is weak or crackable, the attacker gains that user’s AD credentials—possibly leading to privilege escalation if the account has high privileges.
+1.3 How to Do It (Step-by-Step)
+	1. Identify ASREP Accounts
+		○ PowerView:
+
+powershell
+CopyEdit
+Import-Module .\PowerView.ps1
+Get-DomainUser -PreAuthNotRequired -Properties samaccountname
+		○ Rubeus (Rubeus.exe):
+
+powershell
+CopyEdit
+Rubeus.exe asreproast
+		○ These tools list users flagged “DONT_REQ_PREAUTH” in AD.
+	2. Request the TGT
+		○ Rubeus example:
+
+powershell
+CopyEdit
+Rubeus.exe asreproast /user:SomeUser /domain:corp.local
+		○ You’ll get a base64-encoded or hash representation of the TGT.
+	3. Crack the Hash Offline
+		○ Save the output to a file, then use a tool like hashcat or john:
+
+bash
+CopyEdit
+# Hashcat example (Kerberos 23 = $krb5asrep$)
+hashcat -m 18200 asrep_hashes.txt rockyou.txt
+	4. Use the Password
+		○ If cracked successfully, you now have clear-text credentials for that AD account.
+1.4 Defend
+	• Require Kerberos preauthentication for all user accounts (uncheck “Do not require Kerberos preauthentication”).
+	• Monitor for unusual TGT requests.
+	• Enforce strong password policies to make offline cracking harder.
+
+2. Kerberoasting
+2.1 What It Is
+	• Kerberoasting targets service accounts in AD that have an SPN (Service Principal Name) associated.
+	• An attacker with any domain user credentials can request a service ticket (TGS) for that service. The TGS is encrypted with the service account’s NTLM hash. By cracking that ticket offline, the attacker obtains the service account’s password.
+2.2 Why It Matters
+	• Service accounts often run with high privileges (e.g., SQL Service, custom apps).
+	• Many of these accounts have weak or never-changed passwords, making them prime targets for offline cracking.
+2.3 How to Do It (Step-by-Step)
+	1. Find SPNs
+		○ Active user accounts with an SPN indicate a service account.
+		○ SetSPN command or tools like PowerView or Impacket:
+
+powershell
+CopyEdit
+# PowerView
+Get-NetUser -SPN
+
+# Impacket example
+python GetUserSPNs.py corp.local/user:password -request
+	2. Request a TGS
+		○ Using Impacket:
+
+bash
+CopyEdit
+python GetUserSPNs.py corp.local/username:password -request
+		○ Or with Rubeus:
+
+powershell
+CopyEdit
+Rubeus.exe kerberoast /domain:corp.local /user:Alice /password:P@ssw0rd
+		○ The tool returns the TGS in hash form.
+	3. Crack the TGS Offline
+		○ Save the ticket hash to a file.
+		○ hashcat example:
+
+bash
+CopyEdit
+hashcat -m 13100 kerberoast_hashes.txt rockyou.txt
+		○ If the password is weak, you’ll recover it.
+	4. Leverage the Service Account
+		○ Depending on the privileges, you may escalate or pivot (e.g., if it’s a domain admin-level service).
+2.4 Defend
+	• Rotate service account passwords regularly; use complex passwords.
+	• Use Group Managed Service Accounts (gMSAs) where possible.
+	• Monitor for excessive TGS requests from a single host/user.
+
+3. TimeRoasting
+3.1 What It Is
+	• TimeRoasting is a less common variation of Kerberoasting. The idea is an attacker tries to manipulate or observe timestamp-based properties of Kerberos tickets (or request TGS tickets with certain time offsets).
+	• In some references, it involves obtaining a TGS that is valid for a longer time window (or forging request times). This can give the attacker more time to crack or exploit the ticket offline.
+	Note: “Timeroasting” is not as universally known as Kerberoasting or ASREP. It appears in certain advanced AD attack writeups or references. The concept is that if you can manipulate the ticket’s encryption time or cause the domain controller to produce a ticket with certain quirks, you might get an advantage in offline cracking or in bypassing replay detection.
+3.2 Why It Matters
+	• If successfully done, timeroasting can produce a TGS ticket that is valid for a longer or specific time period, potentially circumventing certain replay or time-based defenses in Kerberos.
+3.3 How to Do It (Step-by-Step)
+	1. Identify Target SPN
+		○ Similar to Kerberoasting—you still need a service account with an SPN.
+	2. Manipulate Time Requests
+		○ Using a custom script or patched Kerberos client (like a modified Impacket or specialized tool) to request a TGS with a future or past timestamp.
+		○ The idea is to exploit domain controllers that do not strictly check timestamps or have poor time synchronization.
+	3. Obtain the TGS
+		○ If the domain controller is misconfigured, it issues the TGS.
+		○ Now you have a ticket that might have a validity window that is unusual or easier to crack.
+	4. Crack Offline
+		○ Same approach as normal Kerberoasting: use hashcat or john to recover the service account’s password from the TGS encryption.
+3.4 Defend
+	• Ensure accurate time sync across the domain; use NTP with minimal drift.
+	• Enforce strict Kerberos clock skew policies.
+	• Monitor unusual TGS requests or repeated attempts from a single host.
+
+Practical Usage & Tips
+	1. Which Users to Target First?
+		○ ASREP: Look for user accounts with DONT_REQ_PREAUTH. They might be old or service accounts.
+		○ Kerberoasting: Target service accounts with potentially high privileges.
+		○ TimeRoasting: An advanced scenario; typical environments might not be vulnerable unless there's a time sync or DC misconfiguration.
+	2. Cracking Tools & Wordlists
+		○ For best results, combine multiple wordlists (e.g., rockyou.txt, SecLists, custom corp-themed lists).
+		○ Consider rule-based attacks in hashcat for more coverage.
+	3. OPSEC Considerations
+		○ Requesting multiple TGS tickets can be logged (Event ID 4769).
+		○ Tools like Rubeus can add /nowrap or /opsec parameters to reduce detection in certain cases.
+	4. Beyond Domain Admin
+		○ Even if the roasted account is “just a service,” that service might have local admin rights on critical servers or be part of a domain-level group.
+		○ Always chain the compromise to see if you can escalate to Domain Admin or access sensitive data.
+
+Overall Defenses
+	• Enforce strong password policies (long, random service account passwords).
+	• Disable preauthentication exceptions (no user should have “Do not require preauth”).
+	• Rotate service account passwords or move to gMSA.
+	• Monitor for suspicious Kerberos ticket requests, especially large volumes from single hosts.
+	• Ensure domain controllers and hosts are within the recommended time skew (usually ±5 minutes by default).

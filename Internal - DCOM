@@ -1,0 +1,14 @@
+G.1 What It Is
+	• Distributed Component Object Model (DCOM) is a Microsoft technology for software components to communicate over network.
+	• Attackers can abuse DCOM to remotely execute code on domain-joined machines if they have the right permissions.
+G.2 Why It Matters
+	• Another lateral movement technique if you have valid user credentials that can call DCOM objects.
+G.3 How to Exploit (Step-by-Step)
+	1. Enumerate systems that allow DCOM calls from your compromised account.
+	2. Use Tools: wmic, MMC20.Application COM objects, or specialized scripts (e.g., CrackMapExec dcom).
+	3. Execute Remote Commands
+		○ Example: Using MMC20.Application to launch a remote process or get a shell.
+	4. Defend
+		○ Restrict DCOM permissions via dcomcnfg.
+		○ Use host-based firewalls to block unwanted COM calls.
+		○ Monitor unusual DCOM usage in event logs.

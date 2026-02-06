@@ -1,0 +1,12 @@
+K.1 What It Is
+	• The Bronze Bit attack (also called service ticket “S4U2self” forging) manipulates flags in a Kerberos ticket to escalate privileges.
+K.2 Why It Matters
+	• Attackers can modify certain bits in the ticket to appear as if it was derived from a higher privilege.
+	• Can bypass certain constraints on Kerberos delegation or ticket usage.
+K.3 How to Exploit (Step-by-Step)
+	1. Obtain a service ticket or TGS.
+	2. Manipulate the Kerberos flags or “forwardable” fields using custom scripts (like a modified Rubeus or specialized code).
+	3. Redeem the altered ticket on the target service, tricking it into giving higher privileges.
+	4. Defend
+		○ Keep domain controllers patched for known Bronze Bit or S4U2self vulnerabilities.
+		○ Monitor unusual ticket requests or suspicious TGS traffic.

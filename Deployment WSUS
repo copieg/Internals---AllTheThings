@@ -1,0 +1,19 @@
+B.1 What It Is
+	• Windows Server Update Services (WSUS) manages and distributes Windows updates to domain machines.
+	• Typically runs on a server that client PCs trust for OS and application patches.
+B.2 Why It Matters
+	• If attackers control WSUS, they can push malicious updates or tamper with patches.
+	• Clients will trust these updates as signed or “approved,” leading to mass compromise.
+B.3 How to Exploit (Step-by-Step)
+	1. Identify WSUS Server
+		○ Check DNS for wsus, updates, or netstat on endpoints to see where they request updates.
+	2. Privilege Escalation
+		○ If you gain local admin or credentials on the WSUS server, you can modify the update packages or metadata.
+		○ Tools or scripts can inject malicious .msu files or tamper with existing updates.
+	3. Deploy Malicious Updates
+		○ In the WSUS console, mark your trojanized package as “approved.”
+		○ Domain machines download and install it at next scheduled update.
+	4. Defend
+		○ Use SSL/TLS for WSUS signing and secure channels.
+		○ Restrict admin access to WSUS.
+		○ Monitor changes to the WSUS console and update approvals.

@@ -1,0 +1,54 @@
+https://adsecurity.org/
+https://www.ired.team/
+https://book.hacktricks.xyz/windows-hardening/active-directory-methodology
+What is Active Directory? (Active Directory Pentest) Cheatsheet  - OSCP PNPT CPTS With InfoSec Pat
+
+
+
+This Active Directory Method Helped Me Pass OSCP
+
+
+
+https://orange-cyberdefense.github.io/ocd-mindmaps/img/pentest_ad_dark_2022_11.svg
+
+
+SMB Tools
+
+smbclient
+https://www.samba.org/samba/docs/current/man-html/smbclient.1.html
+
+Crackmapexed
+https://github.com/byt3bl33d3r/CrackMapExec
+
+SMBmap
+https://github.com/ShawnDEvans/smbmap
+
+Impacket
+https://github.com/fortra/impacket
+
+Psexec.py
+https://github.com/fortra/impacket/blob/master/examples/psexec.py
+
+SMBexec.py
+https://github.com/fortra/impacket/blob/master/examples/smbexec.py
+
+
+FTP Tools
+
+FTP
+https://linux.die.net/man/1/ftp
+
+
+Data Base Tools
+
+Mysql-cli
+https://github.com/dbcli/mssql-cli
+
+Mycli
+https://github.com/dbcli/mycli
+
+Mssqlclient.py
+https://github.com/fortra/impacket/blob/master/examples/mssqlclient.py
+
+MySQL workbench
+https://dev.mysql.com/downloads/workbench/

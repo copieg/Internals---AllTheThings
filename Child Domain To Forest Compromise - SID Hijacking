@@ -1,0 +1,12 @@
+Y.1 What It Is
+	• SID History can store old SIDs from previous domains. Attackers can inject a domain admin SID into a user’s SID history, effectively giving domain admin rights in the new domain.
+Y.2 Why It Matters
+	• This is often used when you have control of a child domain and want to escalate to the forest root domain.
+Y.3 How to Exploit (Step-by-Step)
+	1. Own the child domain (e.g., domain admin in child).
+	2. Use Mimikatz or custom scripts to add the forest root domain’s admin SID to the user’s SID History.
+	3. Authenticate in the root domain as if you’re an admin.
+	4. Defend
+		○ Restrict who can set SID History.
+		○ Enable SID Filtering on domain trusts.
+		○ Monitor domain trusts for suspicious changes.

@@ -1,0 +1,104 @@
+GOAL
+From low user > Local Admin (if not already)
+
+So you can dump credentials, move laterally, install tools, etc.
+
+Privilege Escalation
+
+What to Look For (Enumeration Focus)
+
+Use Seatbelt or winPEAS to automate the discovery.
+
+Weakness	Description	Example
+Unquoted service paths	A service has a space in its path and no quotes – lets you hijack execution	C:\Program Files\My App\Service.exe will execute C:\Program.exe if it exists
+Weak service permissions	Service binary is modifiable by current user	Replace the binary and restart service
+Startup folders	Anything the current user can place in an admin’s startup folder	Run as admin on next boot
+AlwaysInstallElevated	A registry setting lets you install .MSI files as SYSTEM	Install a reverse shell as SYSTEM
+UAC misconfigs	UAC disabled or autoconfirmed for certain binaries	Bypass privilege prompts
+Vulnerable software (CVEs)	Known RCE/PrivEsc vulnerabilities on installed apps	E.g. Vuln version of 7-Zip or VLC
+
+Examples:
+Identify Unquoted Service Paths: You can use tools like PowerShell to enumerate services and check for unquoted paths. Here is a PowerShell script to identify such services: Get-WmiObject win32_service | Where-Object { $_.PathName -match ' ' -and $_.PathName -notmatch '"' } | Select-Object Name, DisplayName, PathName
+https://medium.com/@SumitVerma101/windows-privilege-escalation-part-1-unquoted-service-path-c7a011a8d8ae
+
+Weak Service Permissions
+https://medium.com/p/45a39a64669f
+
+Startup Folders
+https://medium.com/p/b7a70e0ecc31
+
+AlwaysInstallElevated
+https://medium.com/@bherunda/windows-privesc-detecting-alwaysinstallelevated-policy-abuse-f3ffa7a734bd
+
+UAC Misconfigs
+https://medium.com/@s12deff/steal-uac-password-from-file-explorer-c1ff364ba08f
+
+
+
+Tools for Local PrivEsc
+Tool	Purpose	Example Command
+winPEAS	Automated enum	winPEASx64.exe
+Seatbelt	Modular .NET tool	Seatbelt.exe -group=all
+AccessChk (Sysinternals)	Find weak service ACLs	accesschk.exe -uwcqv "Users" *
+SharpUp	Sharp tool for misconfigs	SharpUp.exe
+
+Tip: CVE Hunting on Internal Hosts
+Use tools like:
+	• systeminfo ➝ check for known KBs missing
+	• winPEAS ➝ suggests CVEs based on OS & patches
+	• Watson ➝ another privesc suggester
+
+
+
+Lateral Movement
+
+Move from Host to Host
+Once you're local admin somewhere, time to pivot. Your goal is to land on more valuable systems (e.g. users, file shares, servers).
+
+Technique	Description	Tools
+PSExec	Remote code execution via SMB, needs local admin creds	psexec.py (Impacket)
+WMI	Remote execution via Windows Management Instrumentation	wmiexec.py
+SMB sessions	Access network shares, drop payloads	smbclient, CrackMapExec
+RDP	GUI access, if enabled	RDP client
+Scheduled Tasks	Deploy and execute payload remotely	schtasks.exe
+
+
+
+Tool	Purpose	Example
+CrackMapExec	Swiss-army knife for AD pentesting	cme smb 192.168.1.0/24 -u user -p pass
+Impacket toolkit	Many RCE & auth tools	psexec.py, wmiexec.py, smbexec.py
+Responder	Poison network protocols	responder -I eth0
+NTLMRelayX	Relay NTLM to gain access	ntlmrelayx.py -t smb://target
+
+Using Crackmapexec for lateral movement:
+	Enumerate open SMB
+	Crackmapexec smb [IP] -u [Username] -p [Password] --shares
+	
+	If local admin is found, get a shell:
+	Crackmapexec smb [IP] -u [Username] -p [Password] --exec-method smbexec -x "whoami"
+	
+	Dump hashes from LSASS
+	Keep moving
+
+Domain Controller Takeover
+The end goal of many internal tests: compromise a Domain Controller (DC) and become Domain Admin.
+
+Common DC Attack Vectors
+Attack	Description	Tools
+EternalBlue	MS17-010 RCE (historical, still in legacy networks)	Metasploit, nmap, EternalScanner
+DCSync	Mimic a DC and request password hashes	mimikatz
+AS-REP Roasting	Crackable tickets for users not requiring pre-auth	GetNPUsers.py
+Kerberoasting	Crackable service tickets for SPNs	Rubeus
+RODC Abuse	If Read-Only Domain Controller has weak replication controls	DCSync from RODC
+
+
+Example – DCSync with Mimikatz
+• You’re DA or in a group that allows replication.
+• Run:	lsadump::dcsync /user:administrator
+• Get NTLM hash of administrator and use pass-the-hash.
+
+
+The Pyramid of Internal Attack
+
+User Access ➝ Local Admin ➝ Credential Theft ➝ Lateral Movement ➝ Domain Admin
+
